@@ -15,7 +15,8 @@ import shutil
 import logging
 import traceback
 import sys
-import time
+from time import sleep, gmtime, strftime
+from lib.emailalerts import emailAlerts
 
 def trim_slash(d):
     """
@@ -32,6 +33,8 @@ if __name__ == '__main__':
         help='maximum number of retries')
     parser.add_argument('--retry-to', dest='retry_to', type=int, default=10,
         help='time in seconds between each retry')
+    parser.add_argument('--email', dest='email', type=str, default=False,
+        help='address to send email alerts')
     parser.add_argument('--src', dest='src', type=str, required=True,
         help='source directory')
     parser.add_argument('--dest', dest='dest', type=str, required=True,
@@ -39,17 +42,22 @@ if __name__ == '__main__':
     args = parser.parse_args()
     
     # Load values.
-    log = args.log
+    log = "_".join([strftime("%Y%m%d_%H%M%S", gmtime()), args.log])
     retry = args.retry
     retry_to = args.retry_to
     src = trim_slash(args.src)
     dest = trim_slash(args.dest)
+    email = args.email.split(',')
+    
+    # Configure mailer.
+    if email:
+        mail = emailAlerts(sender='perf@automation.com', smtp='10.10.10.3', to=email)
     
     # Configure logging
     #logging.config.fileConfig('logging.conf')
     #logger = logging.getLogger()
     FORMAT = "%(asctime)s - %(levelname)s - %(message)s"
-    logging.basicConfig(filename='cfscopy.log',level=logging.INFO, format=FORMAT, filemode='w')
+    logging.basicConfig(filename=log,level=logging.INFO, format=FORMAT, filemode='w')
     
     
     for root, dirs, files in os.walk(src):
@@ -61,7 +69,7 @@ if __name__ == '__main__':
             logging.info('Creating directory %s' % new)
             
             # Create the directory at the destination.
-            r = 0
+            r = 1
             while r <= retry:
                 try:
                     os.mkdir(new)
@@ -71,8 +79,10 @@ if __name__ == '__main__':
                     logging.error(traceback.format_exc())
                     if r == retry:
                         logging.error('Maximum attempts succeeded!')
+                        if email:
+                            mail.send_msg('CFS Copy Exited', 'CFS copy has failed to create %s and has exited with the following exception.\n%s' % (new, traceback.format_exc()))
                         sys.exit(1)
-                    time.sleep(retry_to)
+                    sleep(retry_to)
                 finally:
                     r += 1
             
@@ -84,7 +94,7 @@ if __name__ == '__main__':
             logging.info('Writing %s.' % new)
             
             # Copy the file to the destination.
-            r = 0
+            r = 1
             while r <= retry:
                 try:
                     shutil.copy(orig, new)
@@ -94,7 +104,9 @@ if __name__ == '__main__':
                     logging.error(traceback.format_exc())
                     if r == retry:
                         logging.error('Maximum attempts succeeded!')
+                        if email:
+                            mail.send_msg('CFS Copy Exited', 'CFS copy has failed to write %s and has exited with the following exception.\n%s' % (new, traceback.format_exc()))
                         sys.exit(1)
-                    time.sleep(retry_to)
+                    sleep(retry_to)
                 finally:
                     r += 1
