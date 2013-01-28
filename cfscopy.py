@@ -47,7 +47,10 @@ if __name__ == '__main__':
     retry_to = args.retry_to
     src = trim_slash(args.src)
     dest = trim_slash(args.dest)
-    email = args.email.split(',')
+    if args.email:
+        email = args.email.split(',')
+    else:
+        email = args.email
     
     # Configure mailer.
     if email:
@@ -58,6 +61,7 @@ if __name__ == '__main__':
     #logger = logging.getLogger()
     FORMAT = "%(asctime)s - %(levelname)s - %(message)s"
     logging.basicConfig(filename=log,level=logging.INFO, format=FORMAT, filemode='w')
+    print 'Logging to %s.' % log
     
     
     for root, dirs, files in os.walk(src):
@@ -81,6 +85,7 @@ if __name__ == '__main__':
                         logging.error('Maximum attempts succeeded!')
                         if email:
                             mail.send_msg('CFS Copy Exited', 'CFS copy has failed to create %s and has exited with the following exception.\n%s' % (new, traceback.format_exc()))
+                        print 'Failed!'
                         sys.exit(1)
                     sleep(retry_to)
                 finally:
@@ -106,7 +111,10 @@ if __name__ == '__main__':
                         logging.error('Maximum attempts succeeded!')
                         if email:
                             mail.send_msg('CFS Copy Exited', 'CFS copy has failed to write %s and has exited with the following exception.\n%s' % (new, traceback.format_exc()))
+                        print 'Failed!'
                         sys.exit(1)
                     sleep(retry_to)
                 finally:
                     r += 1
+                    
+    mail.send_msg('CFS Copy Complete!')
