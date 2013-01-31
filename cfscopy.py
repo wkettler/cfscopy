@@ -16,7 +16,6 @@ import logging
 import traceback
 import sys
 from time import sleep, gmtime, strftime
-from lib.emailalerts import emailAlerts
 
 def trim_slash(d):
     """
@@ -33,8 +32,6 @@ if __name__ == '__main__':
         help='maximum number of retries')
     parser.add_argument('--retry-to', dest='retry_to', type=int, default=10,
         help='time in seconds between each retry')
-    parser.add_argument('--email', dest='email', type=str, default=False,
-        help='address to send email alerts')
     parser.add_argument('--src', dest='src', type=str, required=True,
         help='source directory')
     parser.add_argument('--dest', dest='dest', type=str, required=True,
@@ -47,14 +44,6 @@ if __name__ == '__main__':
     retry_to = args.retry_to
     src = trim_slash(args.src)
     dest = trim_slash(args.dest)
-    if args.email:
-        email = args.email.split(',')
-    else:
-        email = args.email
-    
-    # Configure mailer.
-    if email:
-        mail = emailAlerts(sender='perf@automation.com', smtp='10.10.10.3', to=email)
     
     # Configure logging
     #logging.config.fileConfig('logging.conf')
@@ -83,8 +72,6 @@ if __name__ == '__main__':
                     logging.error(traceback.format_exc())
                     if r == retry:
                         logging.error('Maximum attempts succeeded!')
-                        if email:
-                            mail.send_msg('CFS Copy Exited', 'CFS copy has failed to create %s and has exited with the following exception.\n%s' % (new, traceback.format_exc()))
                         print 'Failed!'
                         sys.exit(1)
                     sleep(retry_to)
@@ -109,12 +96,8 @@ if __name__ == '__main__':
                     logging.error(traceback.format_exc())
                     if r == retry:
                         logging.error('Maximum attempts succeeded!')
-                        if email:
-                            mail.send_msg('CFS Copy Exited', 'CFS copy has failed to write %s and has exited with the following exception.\n%s' % (new, traceback.format_exc()))
                         print 'Failed!'
                         sys.exit(1)
                     sleep(retry_to)
                 finally:
                     r += 1
-                    
-    mail.send_msg('CFS Copy Complete!')
