@@ -11,7 +11,6 @@ __created__ = 'January 24, 2013'
 import os
 import errno
 from argparse import ArgumentParser
-import shutil
 import logging
 import traceback
 import sys
@@ -37,6 +36,35 @@ def completed(f):
                 complete.append(i)
                 
     return complete
+
+def cp_sync(src, dst, bs=16):
+    """
+    Copy a file from source to destination.
+    
+    The destination may be a directory.
+    
+    Arguments:
+    src -- source file
+    dst -- destination file or directory
+    bs -- block size in KB
+    """
+   
+    bs *= 1024
+    
+    if os.path.isdir(dst):
+        dst = os.path.join(dst, os.path.basename(src))
+
+    # Write file and metadata.
+    with open(src, 'rb') as fsrc:
+        with open(dst, 'wb') as fdst:
+            while True:
+                buf = fsrc.read(bs)
+                if not buf:
+                    break
+                fdst.write(buf)
+            # Force write of fdst to disk.
+            fdst.flush()
+            os.fsync(fdst.fileno())
 
 if __name__ == '__main__':
     # Define CLI arguments.
@@ -67,6 +95,9 @@ if __name__ == '__main__':
     FORMAT = "%(asctime)s - %(levelname)s - %(message)s"
     logging.basicConfig(filename=log,level=logging.INFO, format=FORMAT, filemode='w')
     print 'Logging to %s.' % log
+    
+    if os.path.normcase(os.path.abspath(src)) == os.path.normcase(os.path.abspath(dst)):
+        raise ValueError("`%s` and `%s` are the same directory." % (src, dst))
     
     complete = []
     if resume_log:
@@ -111,7 +142,7 @@ if __name__ == '__main__':
                     logging.info('File already exists : %s' % new)
                     break
                 try:
-                    shutil.copy(orig, new)
+                    cp_sync(orig, new)
                     logging.info('File : %s' % new)
                     break
                 except Exception, err:
