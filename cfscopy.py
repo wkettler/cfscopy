@@ -16,6 +16,7 @@ import logging
 import traceback
 import sys
 from time import sleep, gmtime, strftime
+import re
 
 def trim_slash(d):
     """
@@ -23,27 +24,42 @@ def trim_slash(d):
     """
     return d.rstrip(os.path.sep)
 
+def completed(f):
+    """
+    Parse log for completed directories and files.
+    """
+    complete = []
+    
+    with open(f, 'rb') as fh:
+        for l in fh:
+            if re.search('INFO', l):
+                i = l.split(':')[-1].strip()
+                complete.append(i)
+                
+    return complete
+
 if __name__ == '__main__':
     # Define CLI arguments.
     parser = ArgumentParser(description='CFS directory copy utility.')
-    parser.add_argument('--log', dest='log', type=str, default='cfscopy.log',
-        help='log file')
     parser.add_argument('--retry', dest='retry', type=int, default=3,
         help='maximum number of retries')
     parser.add_argument('--retry-to', dest='retry_to', type=int, default=10,
         help='time in seconds between each retry')
+    parser.add_argument('--resume', dest='log', type=str, default=None, metavar='LOG',
+        help='resume previous copy')
     parser.add_argument('--src', dest='src', type=str, required=True,
         help='source directory')
-    parser.add_argument('--dest', dest='dest', type=str, required=True,
+    parser.add_argument('--dst', dest='dst', type=str, required=True,
         help='destination directory')
     args = parser.parse_args()
     
     # Load values.
-    log = "_".join([strftime("%Y%m%d_%H%M%S", gmtime()), args.log])
+    log = "_".join([strftime("%Y%m%d_%H%M%S", gmtime()), 'cfscopy.log'])
     retry = args.retry
     retry_to = args.retry_to
     src = trim_slash(args.src)
-    dest = trim_slash(args.dest)
+    dst = trim_slash(args.dst)
+    resume_log = args.log
     
     # Configure logging
     #logging.config.fileConfig('logging.conf')
@@ -52,20 +68,25 @@ if __name__ == '__main__':
     logging.basicConfig(filename=log,level=logging.INFO, format=FORMAT, filemode='w')
     print 'Logging to %s.' % log
     
+    complete = []
+    if resume_log:
+        complete.extend(completed(resume_log))
     
     for root, dirs, files in os.walk(src):
         for d in dirs:
             orig = os.path.join(root, d)
             rel = os.path.relpath(os.path.join(root, d), src)
-            new = os.path.join(dest, rel)
-            
-            logging.info('Creating directory %s' % new)
-            
+            new = os.path.join(dst, rel)
+                        
             # Create the directory at the destination.
             r = 1
             while r <= retry:
+                if new in complete:
+                    logging.info('Directory already exists : %s' % new)
+                    break
                 try:
                     os.mkdir(new)
+                    logging.info('Directory : %s' % new)
                     break
                 except Exception, err:
                     logging.error('Attempt %i of %i failed.' % (r, retry))
@@ -81,15 +102,17 @@ if __name__ == '__main__':
         for f in files:
             orig = os.path.join(root, f)
             rel = os.path.relpath(os.path.join(root, f), src)
-            new = os.path.join(dest, rel)
-            
-            logging.info('Writing %s.' % new)
+            new = os.path.join(dst, rel)
             
             # Copy the file to the destination.
             r = 1
             while r <= retry:
+                if new in complete:
+                    logging.info('File already exists : %s' % new)
+                    break
                 try:
                     shutil.copy(orig, new)
+                    logging.info('File : %s' % new)
                     break
                 except Exception, err:
                     logging.error('Attempt %i of %i failed.' % (r, retry))
