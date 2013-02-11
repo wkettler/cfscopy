@@ -65,14 +65,49 @@ def cp_sync(src, dst, bs=16):
             # Force write of fdst to disk.
             fdst.flush()
             os.fsync(fdst.fileno())
+            
+def cp_win32(src, dst, bs=16):
+    """
+    Copy a file from source to destination using win32 libraries.
+    
+    The destination may be a directory.
+    
+    Arguments:
+    src -- source file
+    dst -- destination file or directory
+    bs -- block size in KB
+    """
+   
+    bs *= 1024
+    
+    if os.path.isdir(dst):
+        dst = os.path.join(dst, os.path.basename(src))
+    
+    # Open destination file using win32 API
+    fdst = win32file.CreateFile(dst, win32file.GENERIC_WRITE, 0, None,
+                win32con.CREATE_ALWAYS, win32file.FILE_FLAG_WRITE_THROUGH, None)
 
-if __name__ == '__main__':
+    # Write file and metadata.
+    with open(src, 'rb') as fsrc:
+        while True:
+            buf = fsrc.read(bs)
+            if not buf:
+                break
+            win32file.WriteFile(fdst, buf)
+        
+    # Flush and close dst
+    win32file.FlushFileBuffers(fdst)
+    fdst.close()
+
+def main():
     # Define CLI arguments.
     parser = ArgumentParser(description='CFS directory copy utility.')
     parser.add_argument('--retry', dest='retry', type=int, default=3,
         help='maximum number of retries')
     parser.add_argument('--retry-to', dest='retry_to', type=int, default=10,
         help='time in seconds between each retry')
+    parser.add_argument('--win32', dest='win32', type=bool, default=False,
+        help='use win32 libraries')
     parser.add_argument('--resume', dest='log', type=str, default=None, metavar='LOG',
         help='resume previous copy')
     parser.add_argument('--src', dest='src', type=str, required=True,
@@ -88,6 +123,7 @@ if __name__ == '__main__':
     src = trim_slash(args.src)
     dst = trim_slash(args.dst)
     resume_log = args.log
+    win32 = args.win32
     
     # Configure logging
     #logging.config.fileConfig('logging.conf')
@@ -98,6 +134,13 @@ if __name__ == '__main__':
     
     if os.path.normcase(os.path.abspath(src)) == os.path.normcase(os.path.abspath(dst)):
         raise ValueError("`%s` and `%s` are the same directory." % (src, dst))
+    
+    if win32:
+        import win32file
+        import win32con
+        cp = lambda src, dst, bs=16: cp_win32(src, dst, bs=bs)
+    else:
+        cp = lambda src, dst, bs=16: cp_sync(src, dst, bs=bs)
     
     complete = []
     if resume_log:
@@ -142,7 +185,7 @@ if __name__ == '__main__':
                     logging.info('File already exists : %s' % new)
                     break
                 try:
-                    cp_sync(orig, new)
+                    cp(orig, new)
                     logging.info('File : %s' % new)
                     break
                 except Exception, err:
@@ -155,3 +198,6 @@ if __name__ == '__main__':
                     sleep(retry_to)
                 finally:
                     r += 1
+                    
+if __name__ == '__main__':
+    main()
