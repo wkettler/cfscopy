@@ -106,7 +106,7 @@ def main():
         help='maximum number of retries')
     parser.add_argument('--retry-to', dest='retry_to', type=int, default=10,
         help='time in seconds between each retry')
-    parser.add_argument('--win32', dest='win32', type=bool, default=False,
+    parser.add_argument('--win32', dest='win32', action='store_true', default=False,
         help='use win32 libraries')
     parser.add_argument('--resume', dest='log', type=str, default=None, metavar='LOG',
         help='resume previous copy')
@@ -135,10 +135,12 @@ def main():
     if os.path.normcase(os.path.abspath(src)) == os.path.normcase(os.path.abspath(dst)):
         raise ValueError("`%s` and `%s` are the same directory." % (src, dst))
     
+    # Import win32 API's
     if win32:
         import win32file
         import win32con
         cp = lambda src, dst, bs=16: cp_win32(src, dst, bs=bs)
+        logging.info("Using win32 API")
     else:
         cp = lambda src, dst, bs=16: cp_sync(src, dst, bs=bs)
     
@@ -198,6 +200,8 @@ def main():
                     sleep(retry_to)
                 finally:
                     r += 1
+                    
+    print 'Finished!'
                     
 if __name__ == '__main__':
     main()
