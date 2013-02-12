@@ -16,6 +16,11 @@ import traceback
 import sys
 from time import sleep, gmtime, strftime
 import re
+try:
+    import win32file
+    import win32con
+except:
+    pass
 
 def trim_slash(d):
     """
@@ -106,7 +111,7 @@ def main():
         help='maximum number of retries')
     parser.add_argument('--retry-to', dest='retry_to', type=int, default=10,
         help='time in seconds between each retry')
-    parser.add_argument('--win32', dest='win32', action='store_true', default=False,
+    parser.add_argument('--win32', dest='win32', action='store_true',
         help='use win32 libraries')
     parser.add_argument('--resume', dest='log', type=str, default=None, metavar='LOG',
         help='resume previous copy')
@@ -126,24 +131,22 @@ def main():
     win32 = args.win32
     
     # Configure logging
-    #logging.config.fileConfig('logging.conf')
-    #logger = logging.getLogger()
-    FORMAT = "%(asctime)s - %(levelname)s - %(message)s"
-    logging.basicConfig(filename=log,level=logging.INFO, format=FORMAT, filemode='w')
+    f = "%(asctime)s - %(levelname)s - %(message)s"
+    logging.basicConfig(filename=log,level=logging.INFO, format=f, filemode='w')
     print 'Logging to %s.' % log
     
+    # Check if src and dst are the same directory
     if os.path.normcase(os.path.abspath(src)) == os.path.normcase(os.path.abspath(dst)):
         raise ValueError("`%s` and `%s` are the same directory." % (src, dst))
     
-    # Import win32 API's
+    # Define cp function
     if win32:
-        import win32file
-        import win32con
-        cp = lambda src, dst, bs=16: cp_win32(src, dst, bs=bs)
+        cp = lambda src, dst: cp_win32(src, dst)
         logging.info("Using win32 API")
     else:
-        cp = lambda src, dst, bs=16: cp_sync(src, dst, bs=bs)
-    
+        cp = lambda src, dst: cp_sync(src, dst)
+        
+    # Build completed files list if resume log is defined
     complete = []
     if resume_log:
         complete.extend(completed(resume_log))
