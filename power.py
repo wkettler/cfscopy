@@ -77,4 +77,4 @@ if __name__ == "__main__":
     args = parser.parse_args()
     
     f = 'power.out'
-    w_srand(args.fsync, args.osync)
+    w_srand(f, 1, fsync=args.fsync, osync=args.osync)
