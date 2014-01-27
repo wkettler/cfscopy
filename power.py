@@ -42,26 +42,26 @@ def w_srand(f, bs, fsync=False, osync=False):
     
     if osync:
         print 'Using O_SYNC.'
-        fh = open(f, 'wb', os.O_SYNC)
+        fh = open(f, os.O_CREAT | os.O_TRUNC | os.O_SYNC | os.O_RDWR)
     else:
-        fh = open(f, 'wb')
+        fh = open(f, os.O_CREAT | os.O_TRUNC | os.O_RDWR)
         
     if fsync:
         print 'Using fsync.'
     
     while True:
-        fh.write("\n%i\n\n" % i)
-        fh.write(buf * bs)
+        os.write(fh, "\n%i\n\n" % i)
+        os.write(fh, buf * bs)
         # Force write of fdst to disk.
         if fsync:
-            fh.flush()
-            os.fsync(fh.fileno())
+            os.fsync(fh)
          
         # Print current block count to screen.
         sys.stdout.write('\r%i' % i)
         sys.stdout.flush()
         i += 1
         
+     os.close(fh)
             
 def main(fsync, osync):
     """
