@@ -65,20 +65,6 @@ def w_srand(f, bs, fsync=False, osync=False):
         print ''
         print 'Exiting.'
         os.close(fh)
-            
-def main(fsync, osync):
-    """
-        Write infinite amount of data to a file using O_SYNC and fsync.
-        
-        Inputs:
-            fsync (bool): fsync after each IO is complete
-            osync (bool): Open file with O_SYNC flag
-        Outputs:
-            NULL
-    """
-    f = "power.out"
-    
-    w_srand(f, 1, fsync=fsync, osync=osync)
 
 if __name__ == "__main__":
     import argparse
@@ -90,4 +76,5 @@ if __name__ == "__main__":
                        help='Open file with O_SYNC flag')
     args = parser.parse_args()
     
-    main(args.fsync, args.osync)
+    f = 'power.out'
+    w_srand(args.fsync, args.osync)
