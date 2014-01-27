@@ -41,9 +41,13 @@ def w_srand(f, bs, fsync=False, osync=False):
     i = 1
     
     if osync:
+        print 'Using O_SYNC.'
         fh = open(f, 'wb', os.O_SYNC)
     else:
         fh = open(f, 'wb')
+        
+    if fsync:
+        print 'Using fsync.'
     
     while True:
         fh.write("\n%i\n\n" % i)
@@ -54,7 +58,7 @@ def w_srand(f, bs, fsync=False, osync=False):
             os.fsync(fh.fileno())
          
         # Print current block count to screen.
-        print i
+        sys.stdout.write('\r%i' % i)
         sys.stdout.flush()
         i += 1
         
@@ -82,15 +86,5 @@ if __name__ == "__main__":
     parser.add_argument('--osync', action='store_true',
                        help='Open file with O_SYNC flag')
     args = parser.parse_args()
-    
-    if args.fsync and args.osync:
-        print 'Using fsync and O_SYNC.'
-    elif args.fsync:
-        print 'Using fsync.'
-    elif args.osync:
-        print 'Using O_SYNC.'
-    else:
-        print 'Standard IO.'
-    sleep(5)
     
     main(args.fsync, args.osync)
