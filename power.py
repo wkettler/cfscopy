@@ -23,7 +23,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 import os
 import sys
-from time import sleep
+
 
 def w_srand(f, bs, fsync=False, osync=False):
     """
@@ -51,29 +51,31 @@ def w_srand(f, bs, fsync=False, osync=False):
     
     try:
         while True:
-            os.write(fh, "\n%i\n\n" % i)
+            os.write(fh, "\n%d\n\n" % i)
             os.write(fh, buf * bs)
             # Force write of fdst to disk.
             if fsync:
                 os.fsync(fh)
              
             # Print current block count to screen.
-            sys.stdout.write('\r%i' % i)
+            sys.stdout.write('\r%d' % i)
             sys.stdout.flush()
             i += 1
     except KeyboardInterrupt:
-        print ''
-        print 'Exiting.'
+        print '\nKeyboard interrupt!'
+    finally:
+        print 'Closing file.'
         os.close(fh)
 
 if __name__ == "__main__":
     import argparse
 
-    parser = argparse.ArgumentParser(description='Verify filesystem data integrity during power loss.')
+    parser = argparse.ArgumentParser(description='Verify filesystem data '
+                                     'integrity during power loss.')
     parser.add_argument('--fsync', action='store_true',
-                       help='fsync after each IO is complete')
+                        help='fsync after each IO is complete')
     parser.add_argument('--osync', action='store_true',
-                       help='Open file with O_SYNC flag')
+                        help='Open file with O_SYNC flag')
     args = parser.parse_args()
     
     f = 'power.out'

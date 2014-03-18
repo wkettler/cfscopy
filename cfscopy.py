@@ -1,15 +1,26 @@
-#! /usr/bin/env python
-#
-# cfscopy.py
-#
-# CFS directory copy utility.
-#
+#!/usr/bin/env python
 
-__author__  = 'William Kettler <william_kettler@dell.com>'
-__created__ = 'January 24, 2013'
+"""
+cfscopy.py
+
+Recursive directory copy utility for testing file system corruption.
+
+Copyright (c) 2014  William Kettler <william.p.kettler@gmail.com>
+
+This program is free software: you can redistribute it and/or modify it under
+the terms of the GNU General Public License as published by the Free Software
+Foundation, either version 3 of the License, or (at your option) any later
+version.
+
+This program is distributed in the hope that it will be useful, but WITHOUT ANY
+WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A
+PARTICULAR PURPOSE.  See the GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License along with
+this program.  If not, see <http://www.gnu.org/licenses/>.
+"""
 
 import os
-import errno
 from argparse import ArgumentParser
 import logging
 import traceback
@@ -19,14 +30,16 @@ import re
 try:
     import win32file
     import win32con
-except:
+except ImportError:
     pass
+
 
 def trim_slash(d):
     """
     Trim trailing slash.
     """
     return d.rstrip(os.path.sep)
+
 
 def completed(f):
     """
@@ -41,6 +54,7 @@ def completed(f):
                 complete.append(i)
                 
     return complete
+
 
 def cp_sync(src, dst, bs=16):
     """
@@ -71,6 +85,7 @@ def cp_sync(src, dst, bs=16):
             fdst.flush()
             os.fsync(fdst.fileno())
             
+
 def cp_win32(src, dst, bs=16):
     """
     Copy a file from source to destination using win32 libraries.
@@ -90,7 +105,8 @@ def cp_win32(src, dst, bs=16):
     
     # Open destination file using win32 API
     fdst = win32file.CreateFile(dst, win32file.GENERIC_WRITE, 0, None,
-                win32con.CREATE_ALWAYS, win32file.FILE_FLAG_WRITE_THROUGH, None)
+                                win32con.CREATE_ALWAYS,
+                                win32file.FILE_FLAG_WRITE_THROUGH, None)
 
     # Write file and metadata.
     with open(src, 'rb') as fsrc:
@@ -104,21 +120,22 @@ def cp_win32(src, dst, bs=16):
     win32file.FlushFileBuffers(fdst)
     fdst.close()
 
+
 def main():
     # Define CLI arguments.
     parser = ArgumentParser(description='CFS directory copy utility.')
     parser.add_argument('--retry', dest='retry', type=int, default=3,
-        help='maximum number of retries')
+                        help='maximum number of retries')
     parser.add_argument('--retry-to', dest='retry_to', type=int, default=10,
-        help='time in seconds between each retry')
+                        help='time in seconds between each retry')
     parser.add_argument('--win32', dest='win32', action='store_true',
-        help='use win32 libraries')
-    parser.add_argument('--resume', dest='log', type=str, default=None, metavar='LOG',
-        help='resume previous copy')
+                        help='use win32 libraries')
+    parser.add_argument('--resume', dest='log', type=str, default=None,
+                        metavar='LOG', help='resume previous copy')
     parser.add_argument('--src', dest='src', type=str, required=True,
-        help='source directory')
+                        help='source directory')
     parser.add_argument('--dst', dest='dst', type=str, required=True,
-        help='destination directory')
+                        help='destination directory')
     args = parser.parse_args()
     
     # Load values.
@@ -132,11 +149,13 @@ def main():
     
     # Configure logging
     f = "%(asctime)s - %(levelname)s - %(message)s"
-    logging.basicConfig(filename=log,level=logging.INFO, format=f, filemode='w')
+    logging.basicConfig(filename=log, level=logging.INFO, format=f,
+                        filemode='w')
     print 'Logging to %s.' % log
     
     # Check if src and dst are the same directory
-    if os.path.normcase(os.path.abspath(src)) == os.path.normcase(os.path.abspath(dst)):
+    if os.path.normcase(os.path.abspath(src)) == \
+            os.path.normcase(os.path.abspath(dst)):
         raise ValueError("`%s` and `%s` are the same directory." % (src, dst))
     
     # Define cp function
@@ -153,7 +172,6 @@ def main():
     
     for root, dirs, files in os.walk(src):
         for d in dirs:
-            orig = os.path.join(root, d)
             rel = os.path.relpath(os.path.join(root, d), src)
             new = os.path.join(dst, rel)
                         
@@ -167,7 +185,7 @@ def main():
                     os.mkdir(new)
                     logging.info('Directory : %s' % new)
                     break
-                except Exception, err:
+                except Exception:
                     logging.error('Attempt %i of %i failed.' % (r, retry))
                     logging.error(traceback.format_exc())
                     if r == retry:
@@ -193,7 +211,7 @@ def main():
                     cp(orig, new)
                     logging.info('File : %s' % new)
                     break
-                except Exception, err:
+                except Exception:
                     logging.error('Attempt %i of %i failed.' % (r, retry))
                     logging.error(traceback.format_exc())
                     if r == retry:
@@ -206,5 +224,6 @@ def main():
                     
     print 'Finished!'
                     
+
 if __name__ == '__main__':
     main()
